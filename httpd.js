@@ -29,8 +29,8 @@ const mimeTypes = {
 };
 
 const options = {
-    key: fs.readFileSync('./certs/privkey.pem'),
-    cert: fs.readFileSync('./certs/fullchain.pem')
+    key: fs.readFileSync( __dirname+'/certs/privkey.pem'),
+    cert: fs.readFileSync( __dirname+'/certs/fullchain.pem')
 };
 //standard web server on port 443 to serve files
 const server = https.createServer(options, function(req, res) {
