@@ -1,3 +1,51 @@
+const { spawn } = require('child_process');
+
+const job_name_to_process = {}
+
+function get_job_name_to_process(job_name) {     //if there is such a process, then keep_alive is true
+    return job_name_to_process[
+        job_name_to_process.keep_alive
+            ? job_name_to_process.keep_alive
+            : job_name
+    ];
+}
+
+function set_job_name_to_process(job_name, process) {
+    job_name_to_process[job_name] = process;
+}
+
+function remove_job_name_to_process(job_name) {
+    delete job_name_to_process[job_name];
+}
+
+
+
+
+function extract_job_name(job_name_with_extension) {
+	const dot_pos = job_name_with_extension.indexOf(".");
+    return dot_pos === -1
+        ? job_name_with_extension
+        : job_name_with_extension.substring(0, dot_pos);
+}
+
+
+
+//see bottom of je_and_browser_code.js: submit_window for
+//the properties of mess_obj
+function serve_show_window_call_callback(browser_socket, mess_obj){
+    let callback_arg = mess_obj.callback_arg
+    let job_name = callback_arg.job_name
+    let job_process = get_job_name_to_process(job_name)
+    console.log("\n\nserve_show_window_call_callback got job_name: " + job_name + " and its process: " + job_process)
+    let code = mess_obj.callback_fn_name + "(" +
+               JSON.stringify(callback_arg) + ")"
+    //code = mess_obj.callback_fn_name + '({"is_submit": false})' //out('short str')" //just for testing
+    console.log("serve_show_window_call_callback made code: " + code)
+    job_process.stdin.setEncoding('utf-8');
+    job_process.stdin.write(code + "\n") //need the newline so that stdio.js readline will be called
+}
+
+
 const serve_job_button_click = (browser_socket, mess_obj) => {
     console.log("serve_job_button_click()", mess_obj.job_name_with_extension);
 
@@ -75,5 +123,6 @@ const serve_job_button_click = (browser_socket, mess_obj) => {
 
 
 module.exports = {
-    serve_job_button_click
+    serve_job_button_click,
+    serve_show_window_call_callback,
 };

@@ -1,12 +1,15 @@
 {
-  "name": "Dexter web server",
+  "name": "www",
   "version": "1.0.0",
   "main": "httpd.js",
-  "scripts": {},
-  "author": "Dmitry Vasilev",
-  "license": "MIT",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
   "description": "",
   "dependencies": {
+    "colors": "^1.3.3",
     "ws": "^6.1.3"
   }
 }

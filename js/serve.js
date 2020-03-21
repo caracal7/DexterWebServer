@@ -1,4 +1,5 @@
-const { mimeTypes } = require('./js/mimeTypes.js');;
+const fs = require('fs');
+const { mimeTypes } = require('./mimeTypes.js');
 
 function serve_file(q, req, res) {
 	const filename = "/srv/samba/share/www/static" + q.pathname;
@@ -18,7 +19,7 @@ function serve_file(q, req, res) {
 
 
 function serve_init_jobs(q, req, res){
-    console.log("serve_init_jobs()")
+    console.log("serve_init_jobs()");
     fs.readdir("/srv/samba/share/dde_apps/",(err, items) => {
         res.write(JSON.stringify(items));
         res.end();
