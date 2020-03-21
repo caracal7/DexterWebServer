@@ -31,7 +31,7 @@ let ip_address = self.location.hostname //"192.168.0.137"
 //may not be an ip address...
 let interval = 1000 //how often to update status
 var pulse //to hold the timout.
-let ws = new WebSocket('wss://'+ip_address)
+let ws = new WebSocket('ws://'+ip_address)
 ws.binaryType = "arraybuffer" //avoids the blob
 ws.onopen = function(){
     self.status = "open"

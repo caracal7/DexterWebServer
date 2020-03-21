@@ -1,134 +1,188 @@
-const https = require('https');
-const url = require('url'); //url parsing
-const fs = require('fs'); //file system
-const net = require('net'); //network
-const ws = require('ws'); //websocket
-// https://github.com/websockets/ws
-//install with:
-//npm install --save ws
-//on Dexter, if httpd.js is going to be in the /srv/samba/share/ folder,
-//install ws there but then run it from root. e.g.
-//cd /srv/samba/share/
-//npm install --save ws
-//cd /
-//node /srv/samba/share/httpd.js
+const http = require('http');
+const url = require('url');
+const fs = require('fs');
+const net = require('net');
+const ws = require('ws');
+const { spawn } = require('child_process');
+const { mimeTypes } = require('./js/mimeTypes.js');;
+const { Dexter } = require('./js/Dexter.js');
 
-//var mime = require('mime'); //translate extensions into mime types
-//skip that,it's stupidly big
-const mimeTypes = {
-    "html": "text/html",
-    "mp3": "audio/mpeg",
-    "mp4": "video/mp4",
-    "jpeg": "image/jpeg",
-    "jpg": "image/jpeg",
-    "png": "image/png",
-    "svg": "image/svg+xml",
-    "gif": "image/gif",
-    "js": "text/javascript",
-    "css": "text/css",
-};
 
-const options = {
-    key: fs.readFileSync( __dirname+'/certs/privkey.pem'),
-    cert: fs.readFileSync( __dirname+'/certs/fullchain.pem')
-};
-//standard web server on port 443 to serve files
-const server = https.createServer(options, function(req, res) {
-    var q = url.parse(req.url, true);
-    if ("/" == q.pathname) q.pathname = "index.html";
-    var filename = "/srv/samba/share/www/" + q.pathname;
-    console.log("serving" + q.pathname);
-    fs.readFile(filename, function(err, data) {
+const job_name_to_process = {}
+
+function get_job_name_to_process(job_name) {     //if there is such a process, then keep_alive is true
+    return job_name_to_process[
+        job_name_to_process.keep_alive
+            ? job_name_to_process.keep_alive
+            : job_name
+    ];
+}
+
+function set_job_name_to_process(job_name, process) {
+    job_name_to_process[job_name] = process;
+}
+
+function remove_job_name_to_process(job_name) {
+    delete job_name_to_process[job_name];
+}
+
+function extract_job_name(job_name_with_extension) {
+	const dot_pos = job_name_with_extension.indexOf(".");
+    return dot_pos === -1
+        ? job_name_with_extension
+        : job_name_with_extension.substring(0, dot_pos);
+}
+
+function serve_init_jobs(q, req, res){
+    //console.log("serve_init_jobs()")
+    fs.readdir("/srv/samba/share/dde_apps/",
+        function(err, items){
+            let items_str = JSON.stringify(items)
+            console.log("serve_init_jobs writing: " + items_str)
+            res.write(items_str)
+            res.end()
+        })
+}
+
+
+console.log("now making wss")
+const wss = new ws.Server({port: 3001})    //server: http_server });
+console.log("done making wss: " + wss)
+
+
+function serve_job_button_click(browser_socket, mess_obj){
+    let job_name_with_extension = mess_obj.job_name_with_extension //includes ".js" suffix
+    console.log("\n\nserver top of serve_job_button_click with job_name_with_extension: " + job_name_with_extension)
+	let jobfile = "/srv/samba/share/dde_apps/" + job_name_with_extension //q.search.substr(1)
+    //console.log("serve_job_button_click with jobfile: " + jobfile)
+    let job_name = extract_job_name(job_name_with_extension)
+    //console.log("top of serve_job_button_click with job_name: " + job_name)
+    //console.log("serve_job_button_click with existing status_code: " + status_code)
+   let job_process = get_job_name_to_process(job_name) //warning: might be undefined.
+   //let server_response = res //to help close over
+   if(!job_process){
+        //https://nodejs.org/api/child_process.html
+        //https://blog.cloudboost.io/node-js-child-process-spawn-178eaaf8e1f9
+        job_process = spawn('node',
+                            ["core define_and_start_job " + jobfile],   //a jobfile than ends in "/keep_alive" is handled specially in core/index.js
+                            {cwd: '/root/Documents/dde', shell: true}
+                           )
+        set_job_name_to_process(job_name, job_process)
+        console.log("just set job_name: " + job_name + " to new process: " + job_process)
+        job_process.stdout.on('data', function(data) {
+          console.log("\n\nserver: stdout.on data got data: " + data + "\n")
+          let data_str = data.toString()
+          //server_response.write(data_str) //pipe straight through to calling browser's handle_stdout
+          //https://github.com/expressjs/compression/issues/56 sez call flush even though it isn't documented.
+          //server_response.flushHeaders() //flush is deprecated.
+          browser_socket.send(data_str)
+	     })
+
+        job_process.stderr.on('data', function(data) {
+          console.log("\n\njob: " + job_name + " got stderr with data: " + data)
+          remove_job_name_to_process(job_name)
+          //server_response.write("Job." + job_name + " errored with: " + data)
+          let lit_obj = {job_name: job_name,
+                         kind: "show_job_button",
+                         button_tooltip: "Server errored with: " + data,
+                         button_color: "red"}
+          browser_socket.send("<for_server>" + JSON.stringify(lit_obj) + "</for_server>")
+          //server_response.end()
+          })
+        job_process.on('close', function(code) {
+          console.log("\n\nServer closed the process of Job: " + job_name + " with code: " + code)
+          if(code !== 0){
+          	let lit_obj = {job_name: job_name,
+                           kind: "show_job_button",
+                           button_tooltip: "Errored with server close error code: " + code,
+                           button_color: "red"}
+          	browser_socket.send("<for_server>" + JSON.stringify(lit_obj) + "</for_server>")
+          }
+          remove_job_name_to_process(job_name)
+          //server_response.end()
+          })
+        }
+    else {
+    	let code
+        if(job_name === "keep_alive") { //happens when transition from keep_alive box checked to unchecked
+        	code = "set_keep_alive_value(" + mess_obj.keep_alive_value + ")"
+        }
+        else {
+        	//code = "Job." + job_name + ".server_job_button_click()"
+            code = 'Job.maybe_define_and_server_job_button_click("' + jobfile + '")'
+        }
+        console.log("serve_job_button_click writing to job: " + job_name + " stdin: " + code)
+        //https://stackoverflow.com/questions/13230370/nodejs-child-process-write-to-stdin-from-an-already-initialised-process
+        job_process.stdin.setEncoding('utf-8');
+        job_process.stdin.write(code + "\n")
+        //job_process.stdin.end();
+    }
+    //serve_get_refresh(q, req, res)
+    //return serve_jobs(q, req, res)  //res.end()
+}
+
+//see bottom of je_and_browser_code.js: submit_window for
+//the properties of mess_obj
+function serve_show_window_call_callback(browser_socket, mess_obj){
+    let callback_arg = mess_obj.callback_arg
+    let job_name = callback_arg.job_name
+    let job_process = get_job_name_to_process(job_name)
+    console.log("\n\nserve_show_window_call_callback got job_name: " + job_name + " and its process: " + job_process)
+    let code = mess_obj.callback_fn_name + "(" +
+               JSON.stringify(callback_arg) + ")"
+    //code = mess_obj.callback_fn_name + '({"is_submit": false})' //out('short str')" //just for testing
+    console.log("serve_show_window_call_callback made code: " + code)
+    job_process.stdin.setEncoding('utf-8');
+    job_process.stdin.write(code + "\n") //need the newline so that stdio.js readline will be called
+}
+
+function serve_file(q, req, res) {
+	const filename = "/srv/samba/share/www/static" + q.pathname;
+    fs.readFile(filename, (err, data) => {
         if (err) {
-            res.writeHead(404, {
-                'Content-Type': 'text/html'
-            });
+            res.writeHead(404, {'Content-Type': 'text/html'});
             return res.end("404 Not Found");
         }
         res.setHeader('Access-Control-Allow-Origin', '*');
-        let mimeType = mimeTypes[q.pathname.split(".").pop()] || "application/octet-stream";
-        console.log("Content-Type:", mimeType);
+        const mimeType = mimeTypes[ q.pathname.split(".").pop() ] || "application/octet-stream";
         res.setHeader("Content-Type", mimeType);
-        res.writeHead(200);
-        res.write(data);
-        return res.end();
-    });
-}).listen(443);
-console.log("listing on port 443");
+        res.writeHead(200)
+        res.write(data)
+        return res.end()
+    })
+}
 
-//socket server to accept websockets from the browser on port 3000
-//and forward them out to DexRun as a raw socket
-const browser = new ws.Server({
-    server
+
+const server = http.createServer((req, res) => {
+    const q = url.parse(req.url, true);
+    if (q.pathname === "/") q.pathname = "/index.html";
+    if (q.pathname === "/init_jobs")
+        serve_init_jobs(q, req, res);
+    else
+        serve_file(q, req, res);
+}).listen(80);
+console.log("Listening on port 80");
+
+
+
+wss.on('connection', function(the_ws, req) {
+    let browser_socket = the_ws;
+    the_ws.on('message', function(message) {
+        let mess_obj = JSON.parse(message);
+        if(mess_obj.kind === "keep_alive_click")
+            serve_job_button_click(browser_socket, mess_obj);
+        else if(mess_obj.kind === "job_button_click")
+            serve_job_button_click(browser_socket, mess_obj);
+        else if(mess_obj.kind === "show_window_call_callback") {
+            serve_show_window_call_callback(browser_socket, mess_obj);
+        }
+        else
+            console.log(`wss server received invalid message kind: ${mess_obj.kind}`);
+    });
+    the_ws.send('WebSocket connected.\n');
 })
 
-var bs;
-const dexter = new net.Socket();
-
-//don't open the socket yet, because Dexter only allows 1 socket connection
-dexter.connected = false; //track socket status (doesn't ws do this?)
-
-browser.on('connection', function connection(socket, req) {
-    console.log(process.hrtime()[1], " browser connected ", req.connection.Server);
-    bs = socket
-    socket.on('message', function(data) {
-        console.log(process.hrtime()[1], " browser says ", data.toString());
-        //Now as a client, open a raw socket to DexRun on localhost
-        if (!dexter.connected && !dexter.connecting) {
-            dexter.connect(50000, "127.0.0.1")
-            console.log("dexter connect")
-            dexter.on("connect", function() {
-                dexter.connected = true
-                console.log("dexter connected")
-                dexter.write(data.toString());
-            })
-            dexter.on("data", function(data) {
-                //console.log(process.hrtime()[1], " dexter says ", data)
-                //for(let i = 0; i<8*4; i+=4) {console.log(i, data[i])}
-                console.log(process.hrtime()[1], " dexter says ", "#" + data[1 * 4] + " op:" + String.fromCharCode(data[4 * 4]))
-                if (data[5 * 4]) {
-                    console.log("error:" + data[5 * 4])
-                }
-                if (bs) {
-                    bs.send(data, {
-                        binary: true
-                    })
-                    console.log(process.hrtime()[1], " sent to browser ")
-                }
-            })
-            dexter.on("close", function() {
-                dexter.connected = false
-                console.log("dexter disconnect")
-                dexter.removeAllListeners()
-                //or multiple connect/data/close events next time
-            })
-            dexter.on("end", function() {
-                dexter.connected = false
-                console.log("dexter ended")
-                //dexter.removeAllListeners()
-                dexter.end()
-                //or multiple connect/data/close events next time
-            })
-            dexter.on("error", function() {
-                dexter.connected = false
-                console.log("dexter error")
-                if (bs) bs.send(null, {
-                    binary: true
-                });
-
-                dexter.removeAllListeners()
-                dexter.destroy()
-            })
-        }
-        dexter.write(data.toString());
-    });
-    socket.on('close', function(data) {
-        console.log(process.hrtime()[1], " browser disconnected ");
-        bs = null
-        dexter.end()
-    });
-});
 
 
-//test to see if we can get a status update from DexRun
-//dexter.write("1 1 1 undefined g ;")
+
+const dexter = new Dexter({ server });
