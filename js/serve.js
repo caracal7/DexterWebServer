@@ -1,7 +1,8 @@
+const url = require('url');
 const fs = require('fs');
 const { mimeTypes } = require('./mimeTypes.js');
 
-function serve_file(q, req, res) {
+const serveFile = (q, req, res) => {
 	const filename = "/srv/samba/share/www/static" + q.pathname;
     fs.readFile(filename, (err, data) => {
         if (err) {
@@ -18,7 +19,7 @@ function serve_file(q, req, res) {
 }
 
 
-function serve_init_jobs(q, req, res){
+const serveInitJobs = (q, req, res) => {
     console.log("serve_init_jobs()");
     fs.readdir("/srv/samba/share/dde_apps/",(err, items) => {
         res.write(JSON.stringify(items));
@@ -26,7 +27,14 @@ function serve_init_jobs(q, req, res){
     });
 }
 
+const serve = (req, res) => {
+    const q = url.parse(req.url, true);
+    if (q.pathname === "/") q.pathname = "/index.html";
+    if (q.pathname === "/init_jobs") return serveInitJobs(q, req, res);
+    serveFile(q, req, res);
+}
+
+
 module.exports = {
-    serve_file,
-    serve_init_jobs,
+	serve,
 };

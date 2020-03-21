@@ -12,14 +12,40 @@
         <li><a href="/scratch/index.html">Scratch</a> A simple block langauge.
             <BR>To use, click the <img src="/scratch/AddExtension.png">
             button (lower left) and select the "Dexter HD" extension.</li>
-            <li><a href="/chat.html">DexChat</a> A bare bones direct interface to Dexter for testing and development.</li>
-            <li><a href="/job.html">job.html</a></li>
+        <li><a href="/chat.html">DexChat</a> A bare bones direct interface to Dexter for testing and development.</li>
+        <li><a href="/job.html">job.html</a></li>
 
-            <li><a href="/init_jobs">/init_jobs</a></li>
-
-
-
-
-    </ul>
+        <li><a href="/init_jobs">/init_jobs</a></li>
+</ul>
+    <button onclick="test()">test() Start calibration job</button>
 </body>
+<script>
+    const web_socket = new WebSocket("ws://"+window.location.hostname+":3001")
+    web_socket.onmessage = handle_ws_msg;
+
+    function handle_ws_msg(event) {
+        console.log("handle_ws_msg()",event.data)
+    }
+
+    function test(){
+        console.log("test()");
+
+        web_socket.send(JSON.stringify({
+            kind: 'myJob',
+            options: {
+                a: 123
+
+            }
+        }))
+    }
+
+
+
+    document.addEventListener("DOMContentLoaded", () => {
+
+    });
+
+
+
+</script>
 </html>
