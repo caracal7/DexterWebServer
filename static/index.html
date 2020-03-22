@@ -1,23 +1,23 @@
 <html>
 <head>
     <title>Dexter web server</title>
-
+    <script src="/vendors/ds.min.js"></script>
     <style>
-        </style>
-    </head>
+    </style>
+</head>
 <body>
     <h1>Dexter SSL web server</h1>
     <ul>
         <li><a href="http://hdrobotic.com">HDRobotic.com</a> Company home page</li>
-        <li><a href="/scratch/index.html">Scratch</a> A simple block langauge.
-            <BR>To use, click the <img src="/scratch/AddExtension.png">
+        <li><a href="/scratch/index.html">Scratch</a> A simple block langauge. To use, click the <img src="/scratch/AddExtension.png">
             button (lower left) and select the "Dexter HD" extension.</li>
         <li><a href="/chat.html">DexChat</a> A bare bones direct interface to Dexter for testing and development.</li>
         <li><a href="/job.html">job.html</a></li>
 
         <li><a href="/init_jobs">/init_jobs</a></li>
-</ul>
-    <button onclick="test()">test() Start calibration job</button>
+    </ul>
+    <button onclick="test()">Start calibration job  => test();</button>
+
 </body>
 <script>
     const web_socket = new WebSocket("ws://"+window.location.hostname+":3001")
@@ -34,16 +34,49 @@
             kind: 'myJob',
             options: {
                 a: 123
-
             }
         }))
     }
 
 
-
-    document.addEventListener("DOMContentLoaded", () => {
-
+    const deepstream = (options) => new Promise((resolve, reject) => {
+    	const client = new DeepstreamClient('wss://192.168.1.142:6020');
+    	client.whoami = {
+    		username: undefined
+    	};
+    	client.login( {
+    		username: options.username,
+    		password: options.password
+    	}, (valid, args) => {
+    		if( valid ) {
+    			client.whoami.username = options.username;
+    			resolve(client);
+    		}
+    		else reject(Error(args.reason));
+    	});
     });
+
+
+    const app = async () => {
+
+        const client = await deepstream({ username:'any', password: 'klg' }).catch(e => e);
+        if(client instanceof Error) console.log('Error', client);
+        else {
+            console.log('Connected');
+            const result = await client.rpc.make('add-two-numbers', { numA: 7, numB: 13 });
+            console.log(result);
+        }
+
+
+
+
+    }
+
+
+
+
+
+    document.addEventListener("DOMContentLoaded", () => app());
 
 
 

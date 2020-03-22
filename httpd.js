@@ -1,3 +1,4 @@
+require('colors');
 const http = require('http');
 const ws = require('ws');
 const { Dexter } = require('./js/Dexter.js');
@@ -8,9 +9,11 @@ const {
     serve_show_window_call_callback
 } = require('./js/job/serve_job_button_click.js');
 
-const server = http.createServer(serve).listen(80);
+const PORT = 80;
+
+const server = http.createServer(serve).listen(PORT);
 const wss = new ws.Server({ port: 3001 });
-console.log("Listening on port 80 and 3001");
+
 
 wss.on('connection', function(socket, req) {
     socket.on('message', message => {
@@ -36,3 +39,5 @@ wss.on('connection', function(socket, req) {
 })
 
 const dexter = new Dexter({ server });
+
+console.log(`Dexter listening on port ${PORT} and 3001`.yellow);

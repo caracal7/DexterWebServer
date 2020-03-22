@@ -72,7 +72,7 @@ function out(msg) {
     ul.appendChild(li)
     }
 byID("send").onsubmit=function(e) {
-    let msg = byID("msg").value
+    let msg = byID("msg").value;
     ws.send("1 " + (count++) + " 1 undefined "+msg+" ;")
     console.log("sent:"+msg)
     out('<-'+msg)

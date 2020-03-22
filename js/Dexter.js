@@ -16,7 +16,6 @@ class Dexter {
     }
 }
 
-
 module.exports = {
     Dexter
 };
