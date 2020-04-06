@@ -1,7 +1,7 @@
 
-#Dexter embedded server
+# Dexter embedded server
 
-#Why?
+### Why?
 
 Because maybe we need:
 - SSL encryption and authentication
@@ -11,16 +11,16 @@ Because maybe we need:
 - Pub/Sub
 - MQTT
 
-#Folder structure
+### Folder structure
 
 /certs - SSL certificates
 /messageBroker - message broker & permissions
 /microservices - everything is here :)
-/static - folder with static files served at https://<dexterIP>/
+/static - folder with static files served at Dexter IP https://xxx.xxx.xxx.xxx/
 /tools - some useful tools/utils
 /webServer - HTTPS server for serve static(also can be used for REST services but we don't need REST because we have RPC)
 
-#Installation
+### Installation
 
 1. Backup `/srv/samba/share/www` (For ex. to folder to `/srv/samba/share/www.backup`)
 2. Unpack or clone this repository to `/srv/samba/share/www`
@@ -39,9 +39,9 @@ node www/messageBroker/start &
 node www/webServer/start &
 ```
 6. Reboot dexter
-7. Go to https://<dexterIP>/ (For ex. https://192.168.0.142/)
+7. Go to https://xxx.xxx.xxx.xxx/ (For ex. https://192.168.0.142/)
 
 
-#API
+### API
 
 ... maybe someone help me to describe API? :)
