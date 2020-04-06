@@ -13,14 +13,14 @@ Because maybe we need:
 
 ### Folder structure
 
-```
-/certs - SSL certificates
-/messageBroker - message broker & permissions
-/microservices - everything is here :)
-/static - folder with static files served at Dexter IP https://xxx.xxx.xxx.xxx/
-/tools - some useful tools/utils
-/webServer - HTTPS server for serve static(also can be used for REST services but we don't need REST because we have RPC)
-```
+
+- /certs - SSL certificates
+- /messageBroker - message broker & permissions
+- /microservices - everything is here :)
+- /static - folder with static files served at Dexter IP https://xxx.xxx.xxx.xxx/
+- /tools - some useful tools/utils
+- /webServer - HTTPS server for serve static(also can be used for REST services but we don't need REST because we have RPC)
+
 
 ### Installation
 
@@ -35,9 +35,13 @@ node www/httpd &
 ```
 with
 ```
-#start the message broker
+echo "=====*****(((((((((((((( Javascript ))))))))))))))*****====="
+echo "Start the message broker"
 node www/messageBroker/start &
-#start the local web server
+echo "Sleep for 15 seconds"
+sleep 15
+echo "Wake up :)"
+echo "Start the local web server & microservices manager"
 node www/webServer/start &
 ```
 6. Reboot dexter
