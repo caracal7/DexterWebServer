@@ -20,7 +20,7 @@
 
 </body>
 <script>
-    const web_socket = new WebSocket("ws://"+window.location.hostname+":3001")
+    const web_socket = new WebSocket("wss://"+window.location.hostname+":3001")
     web_socket.onmessage = handle_ws_msg;
 
     function handle_ws_msg(event) {
@@ -39,17 +39,12 @@
     }
 
 
-    const deepstream = (options) => new Promise((resolve, reject) => {
-    	const client = new DeepstreamClient('wss://192.168.1.142:6020');
-    	client.whoami = {
-    		username: undefined
-    	};
-    	client.login( {
-    		username: options.username,
-    		password: options.password
-    	}, (valid, args) => {
+    const deepstream = (ip, { username, password }) => new Promise((resolve, reject) => {
+    	const client = new DeepstreamClient(`wss://${ip}:6020`);
+    	client.whoami = { username: undefined };
+    	client.login( { username, password }, (valid, args) => {
     		if( valid ) {
-    			client.whoami.username = options.username;
+    			client.whoami.username = username;
     			resolve(client);
     		}
     		else reject(Error(args.reason));
@@ -59,10 +54,11 @@
 
     const app = async () => {
 
-        const client = await deepstream({ username:'any', password: 'klg' }).catch(e => e);
+        const client = await deepstream(window.location.hostname, { username:'user', password: 'klg' }).catch(e => e);
+
         if(client instanceof Error) console.log('Error', client);
         else {
-            console.log('Connected');
+            console.log('Connected to Dexter');
             const result = await client.rpc.make('add-two-numbers', { numA: 7, numB: 13 });
             console.log(result);
         }

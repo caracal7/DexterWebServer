@@ -116,7 +116,7 @@
        }
 
        function init_ws(){
-       	 web_socket = new WebSocket("ws://"+window.location.hostname+":3001")
+       	 web_socket = new WebSocket("wss://"+window.location.hostname+":3001")
          web_socket.onmessage = handle_ws_msg
        }
        function handle_ws_msg(event){
